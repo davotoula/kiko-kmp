@@ -115,7 +115,7 @@ public class FantasyConsole(
     /** `stat(100)`: the label of the cart `load()` came from. */
     internal val breadcrumbLabel: String? get() = breadcrumbs.lastOrNull()?.label
 
-    /** Other carts read by `reload(…, name)`, null for one the host could not supply. */
+    /** Other carts by the name `load` or `reload` used, null for one the host could not supply. */
     private val otherCarts = HashMap<String, Cart?>()
 
     private var frameStart = TimeSource.Monotonic.markNow()
@@ -468,18 +468,31 @@ public class FantasyConsole(
         switchingCarts = true
     }
 
-    /** Another cartridge by the name the cart used, read once and remembered. */
-    internal fun otherCart(name: String): Cart? =
-        otherCarts.getOrPut(name) {
+    /**
+     * Another cartridge by the name the cart used, read once and remembered, found or not. The cart
+     * picks the names, so what is remembered is capped: past the cap, a new name is not available.
+     */
+    internal fun otherCart(name: String): Cart? {
+        if (name in otherCarts) return otherCarts[name]
+        if (name.length > MAX_CART_NAME || otherCarts.size >= MAX_OTHER_CARTS) return null
+        val other =
             try {
                 host.loadCart(name)?.let(CartLoader::load)
             } catch (e: CartFormatException) {
                 null
             }
-        }
+        otherCarts[name] = other
+        return other
+    }
 
     public companion object {
         private const val MAX_CPU_LOAD = 2.0
+
+        /** The names one console remembers. Our own limit: the manual sets none. */
+        internal const val MAX_OTHER_CARTS = 32
+
+        /** Longer than any file name; a string can be megabytes, and [otherCarts] keeps its keys. */
+        private const val MAX_CART_NAME = 256
 
         /**
          * The built-ins the console copies into top-level locals before a cart runs, on the cart's

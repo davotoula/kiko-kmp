@@ -251,6 +251,32 @@ class HostileCartTest {
     }
 
     @Test
+    fun aCartCanOnlyHoldSoManyOtherCarts() {
+        // Every read keeps a parsed cart, and a note can give one cart thousands of names. The last
+        // line shows that what was read before the limit still answers. Frames, not one frame: this
+        // many reads can cross into the next one on a busy machine.
+        val carts = List(1000) { "#c$it" }.associateWith { "__lua__\n__gfx__\n77\n" }
+        val code = """for i=0,999 do reload(0,0,1,"#c"..i) end memset(0,0,1) reload(0,0,1,"#c0") printh(peek(0))"""
+        val t = TestConsole(code, carts).frames(1000)
+        assertEquals(listOf("119"), t.log)
+        assertEquals(FantasyConsole.MAX_OTHER_CARTS, t.askedFor.size)
+    }
+
+    @Test
+    fun aCartTheHostHasNotIsAskedForOnce() {
+        val t = TestConsole("""for i=1,100 do reload(0,0,1,"#gone") end""").frames(1000)
+        assertEquals(listOf("#gone"), t.askedFor)
+    }
+
+    @Test
+    fun aNameFarTooLongForACartIsNotPassedOnOrKept() {
+        val code = """s="x" for i=1,20 do s=s..s end reload(0,0,1,s)"""
+        val t = TestConsole(code).frames(1000)
+        assertEquals(FantasyConsole.State.FINISHED, t.console.state)
+        assertEquals(emptyList(), t.askedFor)
+    }
+
+    @Test
     fun aLoopOfBigAllocationsStillEndsItsFrames() {
         // Each split builds 64K strings: a thousand of them before the sampled frame check would
         // hold one frame for seconds, long enough for a player's watchdog to call the game hung.

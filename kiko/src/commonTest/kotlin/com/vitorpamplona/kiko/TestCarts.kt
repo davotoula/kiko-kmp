@@ -35,6 +35,9 @@ class TestConsole(
     val log = ArrayList<String>()
     val saved = HashMap<String, IntArray>()
 
+    /** Every name the host was asked for, in order. */
+    val askedFor = ArrayList<String>()
+
     val console =
         FantasyConsole(
             Cart(ByteArray(Cart.ROM_SIZE), code),
@@ -52,7 +55,10 @@ class TestConsole(
                     saved[id] = values
                 }
 
-                override fun loadCart(name: String) = carts[name]?.encodeToByteArray()
+                override fun loadCart(name: String): ByteArray? {
+                    askedFor.add(name)
+                    return carts[name]?.encodeToByteArray()
+                }
             },
         )
 
