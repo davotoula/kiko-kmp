@@ -171,7 +171,6 @@ public class FantasyConsole(
         // the cart's own data, and multi-cart games rely on that: Into Ruins hands its next cart a
         // table in upper memory. Sources disagree on the screen, so it is cleared with the rest.
         if (switchingCarts) ram.bytes.fill(0, Addr.CART_DATA, Addr.UPPER_MEMORY) else ram.bytes.fill(0)
-        switchingCarts = false
         cart.rom.copyInto(ram.bytes, 0, 0, Addr.CART_DATA_END)
         graphics.reset()
         interp = Interpreter()
@@ -187,6 +186,7 @@ public class FantasyConsole(
         started = false
         frameWaiter = null
         restartRequested = false
+        switchingCarts = false
         cartDataId = null
         cartDataDirty = false
         timeBits = 0
@@ -440,9 +440,7 @@ public class FantasyConsole(
     /** `extcmd("breadcrumb")`: back to the cart that loaded this one, if there is one. */
     internal fun goBack() {
         val back = breadcrumbs.removeLastOrNull() ?: return
-        cart = back.cart
-        runParam = back.param
-        switchingCarts = true
+        enterCart(back.cart, back.param)
         throw RestartRequest()
     }
 
@@ -455,10 +453,17 @@ public class FantasyConsole(
         if (request.breadcrumb != null && request.breadcrumb.length > 1) {
             breadcrumbs.add(Breadcrumb(cart, request.breadcrumb, runParam))
         }
-        cart = next
-        runParam = request.param ?: ""
-        switchingCarts = true
+        enterCart(next, request.param ?: "")
         restartRequested = true
+    }
+
+    private fun enterCart(
+        next: Cart,
+        param: String,
+    ) {
+        cart = next
+        runParam = param
+        switchingCarts = true
     }
 
     /** Another cartridge by the name the cart used, read once and remembered. */

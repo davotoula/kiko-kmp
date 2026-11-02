@@ -20,9 +20,6 @@
  */
 package com.vitorpamplona.kiko
 
-import com.vitorpamplona.kiko.cart.Cart
-import com.vitorpamplona.kiko.runtime.ConsoleHost
-import com.vitorpamplona.kiko.runtime.FantasyConsole
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -190,54 +187,29 @@ class ConsoleFeaturesTest {
 
     @Test
     fun gamesSpanSeveralCarts() {
-        val log = ArrayList<String>()
         val carts =
             mapOf(
                 "#part2" to "pico-8 cartridge\n__lua__\nprinth(\"part2 \" .. stat(6) .. \" \" .. stat(100)) extcmd(\"breadcrumb\")\n",
                 "data.p8" to "pico-8 cartridge\n__lua__\n__gfx__\n77\n",
             )
-        val console =
-            FantasyConsole(
-                Cart(ByteArray(Cart.ROM_SIZE), "reload(0, 0, 1, \"data.p8\") printh(peek(0)) printh(\"param \" .. stat(6)) if (stat(6) == \"\") load(\"#part2\", \"back to part 1\", \"from1\")"),
-                object : ConsoleHost {
-                    override fun log(message: String) {
-                        log.add(message)
-                    }
-
-                    override fun loadCart(name: String) = carts[name]?.encodeToByteArray()
-                },
+        val out =
+            run(
+                "reload(0, 0, 1, \"data.p8\") printh(peek(0)) printh(\"param \" .. stat(6)) if (stat(6) == \"\") load(\"#part2\", \"back to part 1\", \"from1\")",
+                frames = 4,
+                carts = carts,
             )
-        repeat(4) { console.step() }
-        assertEquals(listOf("119", "param ", "part2 from1 back to part 1", "119", "param "), log.take(5))
+        assertEquals(listOf("119", "param ", "part2 from1 back to part 1", "119", "param "), out.take(5))
     }
 
-    /** Plays [front] for a few frames, with [other] as the cart named `#other`; returns what they printed. */
-    private fun playBothCarts(
-        front: String,
-        other: String,
-    ): List<String> {
-        val log = ArrayList<String>()
-        val console =
-            FantasyConsole(
-                Cart(ByteArray(Cart.ROM_SIZE), front),
-                object : ConsoleHost {
-                    override fun log(message: String) {
-                        log.add(message)
-                    }
-
-                    override fun loadCart(name: String) = if (name == "#other") "pico-8 cartridge\n__lua__\n$other\n".encodeToByteArray() else null
-                },
-            )
-        repeat(6) { console.step() }
-        return log
-    }
+    private fun other(code: String) = mapOf("#other" to "pico-8 cartridge\n__lua__\n$code\n")
 
     @Test
     fun loadKeepsTheMemoryCartsPassDataIn() {
         val out =
-            playBothCarts(
+            run(
                 "poke(0x4300,1) poke(0x5dff,2) poke(0x8000,3) poke(0xffff,4) load(\"#other\")",
-                "printh(peek(0x4300)..\",\"..peek(0x5dff)..\",\"..peek(0x8000)..\",\"..peek(0xffff))",
+                frames = 3,
+                carts = other("printh(peek(0x4300)..\",\"..peek(0x5dff)..\",\"..peek(0x8000)..\",\"..peek(0xffff))"),
             )
         assertEquals(listOf("1,2,3,4"), out)
     }
@@ -245,9 +217,10 @@ class ConsoleFeaturesTest {
     @Test
     fun loadStillResetsTheRest() {
         val out =
-            playBothCarts(
+            run(
                 "poke(0x42ff,1) poke(0x5e00,2) poke(0x7fff,3) color(3) load(\"#other\")",
-                "printh(peek(0x42ff)..\",\"..peek(0x5e00)..\",\"..peek(0x7fff)..\",\"..peek(0x5f25))",
+                frames = 3,
+                carts = other("printh(peek(0x42ff)..\",\"..peek(0x5e00)..\",\"..peek(0x7fff)..\",\"..peek(0x5f25))"),
             )
         assertEquals(listOf("0,0,0,6"), out)
     }
@@ -255,9 +228,10 @@ class ConsoleFeaturesTest {
     @Test
     fun goingBackToTheCartBeforeKeepsThatMemoryToo() {
         val out =
-            playBothCarts(
+            run(
                 "if peek(0x8000)==0 then load(\"#other\",\"back\") else printh(peek(0x8000)) end",
-                "poke(0x8000,7) extcmd(\"breadcrumb\")",
+                frames = 4,
+                carts = other("poke(0x8000,7) extcmd(\"breadcrumb\")"),
             )
         assertEquals(listOf("7"), out)
     }

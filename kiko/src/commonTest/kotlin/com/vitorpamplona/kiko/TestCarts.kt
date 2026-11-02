@@ -24,9 +24,13 @@ import com.vitorpamplona.kiko.cart.Cart
 import com.vitorpamplona.kiko.runtime.ConsoleHost
 import com.vitorpamplona.kiko.runtime.FantasyConsole
 
-/** A console running [code] with an empty ROM, whose `printh` lines land in [log]. */
+/**
+ * A console running [code] with an empty ROM, whose `printh` lines land in [log]. [carts] are the
+ * other carts of its game, by the name it loads them with.
+ */
 class TestConsole(
     code: String,
+    carts: Map<String, String> = emptyMap(),
 ) {
     val log = ArrayList<String>()
     val saved = HashMap<String, IntArray>()
@@ -47,6 +51,8 @@ class TestConsole(
                 ) {
                     saved[id] = values
                 }
+
+                override fun loadCart(name: String) = carts[name]?.encodeToByteArray()
             },
         )
 
@@ -60,8 +66,9 @@ class TestConsole(
 fun run(
     code: String,
     frames: Int = 1,
+    carts: Map<String, String> = emptyMap(),
 ): List<String> {
-    val t = TestConsole(code).frames(frames)
+    val t = TestConsole(code, carts).frames(frames)
     t.console.error?.let { t.log.add("ERROR: $it") }
     return t.log
 }
