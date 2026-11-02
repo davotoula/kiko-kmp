@@ -25,9 +25,9 @@ import java.io.File
 
 /**
  * Finds the other carts of a game in the [folder] of the one that was opened, so a game in several
- * carts plays from files: `#some_id` is `some_id.p8.png` there, `level2` is `level2.p8.png` or
- * `level2.p8`, and a name with its extension is that file. A cart picks the name, so it never
- * reaches outside [folder].
+ * carts plays from files: `#some_id` is `some_id.p8.png` there, or its latest `some_id-7.p8.png`
+ * when the cart names no version; `level2` is `level2.p8.png` or `level2.p8`, and a name with its
+ * extension is that file. A cart picks the name, so it never reaches outside [folder].
  */
 class FolderCarts(
     private val folder: File,
@@ -35,9 +35,19 @@ class FolderCarts(
     override fun loadCart(name: String): ByteArray? {
         val base = name.removePrefix("#")
         if ('/' in base || '\\' in base) return null
-        return listOf(base, "$base.p8.png", "$base.p8")
-            .map { File(folder, it) }
-            .firstOrNull { it.isFile }
-            ?.readBytes()
+        val exact = listOf(base, "$base.p8.png", "$base.p8").map { File(folder, it) }.firstOrNull { it.isFile }
+        return (exact ?: if (name.startsWith("#")) latestVersionOf(base) else null)?.readBytes()
     }
+
+    private fun latestVersionOf(id: String): File? =
+        folder
+            .listFiles { file -> file.isFile }
+            .orEmpty()
+            .mapNotNull { file ->
+                file.name
+                    .removeSurrounding("$id-", ".p8.png")
+                    .toIntOrNull()
+                    ?.let { it to file }
+            }.maxByOrNull { (version, _) -> version }
+            ?.second
 }

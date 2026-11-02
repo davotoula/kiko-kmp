@@ -69,6 +69,29 @@ class FolderCartsTest {
     }
 
     @Test
+    fun anIdWithoutAVersionIsItsLatestVersion() {
+        write(File(folder, "game-2.p8.png"), "old")
+        write(File(folder, "game-10.p8.png"), "new")
+        write(File(folder, "game-other.p8.png"))
+        write(File(folder, "gamey-30.p8.png"))
+        write(File(folder, "30.p8.png"))
+        assertEquals("new", loaded("#game"))
+    }
+
+    @Test
+    fun anIdThatMatchesExactlyBeatsItsVersions() {
+        write(File(folder, "game.p8.png"), "exact")
+        write(File(folder, "game-2.p8.png"), "versioned")
+        assertEquals("exact", loaded("#game"))
+    }
+
+    @Test
+    fun onlyAnIdMeansItsLatestVersion() {
+        write(File(folder, "game-2.p8.png"))
+        assertNull(loaded("game"))
+    }
+
+    @Test
     fun aCartThatIsNotThereIsNull() {
         assertNull(loaded("#elsewhere"))
     }
