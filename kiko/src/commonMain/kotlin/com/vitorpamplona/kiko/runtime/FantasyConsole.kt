@@ -156,6 +156,9 @@ public class FantasyConsole(
     private var frameWaiter: Continuation<Unit>? = null
     private var restartRequested = false
 
+    /** The next [boot] starts another cart of the game, so the memory they share stays. */
+    private var switchingCarts = false
+
     internal var cartDataId: String? = null
     internal var cartDataDirty = false
 
@@ -164,7 +167,11 @@ public class FantasyConsole(
     }
 
     private fun boot() {
-        ram.bytes.fill(0)
+        // The manual doesn't say what `load` keeps. Community documentation has it overwrite only
+        // the cart's own data, and multi-cart games rely on that: Into Ruins hands its next cart a
+        // table in upper memory. Sources disagree on the screen, so it is cleared with the rest.
+        if (switchingCarts) ram.bytes.fill(0, Addr.CART_DATA, Addr.UPPER_MEMORY) else ram.bytes.fill(0)
+        switchingCarts = false
         cart.rom.copyInto(ram.bytes, 0, 0, Addr.CART_DATA_END)
         graphics.reset()
         interp = Interpreter()
@@ -435,6 +442,7 @@ public class FantasyConsole(
         val back = breadcrumbs.removeLastOrNull() ?: return
         cart = back.cart
         runParam = back.param
+        switchingCarts = true
         throw RestartRequest()
     }
 
@@ -449,6 +457,7 @@ public class FantasyConsole(
         }
         cart = next
         runParam = request.param ?: ""
+        switchingCarts = true
         restartRequested = true
     }
 

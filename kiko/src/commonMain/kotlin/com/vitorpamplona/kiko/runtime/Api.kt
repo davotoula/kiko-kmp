@@ -728,7 +728,7 @@ internal class Api(
         proc("trace") {}
         fn("serial") { int(0) }
         fn("ls") { one(null) }
-        // Loading another cartridge (`load("#id")`) is not supported: the cart stops and says so.
+        // Another cartridge comes from the host; without one, the cart stops and says so.
         proc("load") {
             console.requestLoad(tostr(it.getOrNull(0)), it.getOrNull(1)?.let(::tostr), it.getOrNull(2)?.let(::tostr))
         }

@@ -211,6 +211,57 @@ class ConsoleFeaturesTest {
         assertEquals(listOf("119", "param ", "part2 from1 back to part 1", "119", "param "), log.take(5))
     }
 
+    /** Plays [front] for a few frames, with [other] as the cart named `#other`; returns what they printed. */
+    private fun playBothCarts(
+        front: String,
+        other: String,
+    ): List<String> {
+        val log = ArrayList<String>()
+        val console =
+            FantasyConsole(
+                Cart(ByteArray(Cart.ROM_SIZE), front),
+                object : ConsoleHost {
+                    override fun log(message: String) {
+                        log.add(message)
+                    }
+
+                    override fun loadCart(name: String) = if (name == "#other") "pico-8 cartridge\n__lua__\n$other\n".encodeToByteArray() else null
+                },
+            )
+        repeat(6) { console.step() }
+        return log
+    }
+
+    @Test
+    fun loadKeepsTheMemoryCartsPassDataIn() {
+        val out =
+            playBothCarts(
+                "poke(0x4300,1) poke(0x5dff,2) poke(0x8000,3) poke(0xffff,4) load(\"#other\")",
+                "printh(peek(0x4300)..\",\"..peek(0x5dff)..\",\"..peek(0x8000)..\",\"..peek(0xffff))",
+            )
+        assertEquals(listOf("1,2,3,4"), out)
+    }
+
+    @Test
+    fun loadStillResetsTheRest() {
+        val out =
+            playBothCarts(
+                "poke(0x42ff,1) poke(0x5e00,2) poke(0x7fff,3) color(3) load(\"#other\")",
+                "printh(peek(0x42ff)..\",\"..peek(0x5e00)..\",\"..peek(0x7fff)..\",\"..peek(0x5f25))",
+            )
+        assertEquals(listOf("0,0,0,6"), out)
+    }
+
+    @Test
+    fun goingBackToTheCartBeforeKeepsThatMemoryToo() {
+        val out =
+            playBothCarts(
+                "if peek(0x8000)==0 then load(\"#other\",\"back\") else printh(peek(0x8000)) end",
+                "poke(0x8000,7) extcmd(\"breadcrumb\")",
+            )
+        assertEquals(listOf("7"), out)
+    }
+
     @Test
     fun aMissingCartIsAClearError() {
         val out = run("load(\"#elsewhere\")")
