@@ -248,6 +248,14 @@ class HostileCartTest {
     }
 
     @Test
+    fun aConstructorPastTheLastArrayIndexKeepsALengthACartCanRead() {
+        val items = List(33000) { "1" }.joinToString(",")
+        // No Lua loop: a long one crosses into the next frame on a busy machine, and this runs one.
+        val out = run("local t={$items} printh(#t) printh(t[32767]) printh(count(t))")
+        assertEquals(listOf("32767", "1", "32767"), out)
+    }
+
+    @Test
     fun hugeSpritesAndMapsCostWhatTheyDraw() {
         val started = TimeSource.Monotonic.markNow()
         val out = run("sspr(0, 0, 8, 8, -16000, -16000, 32767, 32767) map(0, 0, -100000, -100000, 32767, 32767) printh('done')")

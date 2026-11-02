@@ -622,7 +622,7 @@ internal class Api(
         fn("pack") { args ->
             interp.charge(Interpreter.OBJECT_BYTES * args.size)
             val t = LuaTable(args.size)
-            args.forEachIndexed { i, v -> t.rawsetInt(i + 1, v) }
+            args.forEachIndexed { i, v -> t.setPositional(i + 1, v) }
             t.rawset("n", Fix.fromInt(args.size))
             one(t)
         }

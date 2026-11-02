@@ -337,9 +337,9 @@ internal class TableExpr(
                 val values = item.value.evalMulti(f)
                 // `{unpack(t)}`, `{...}`: as long as the cart likes, unlike the items written out.
                 f.interp.charge(Interpreter.OBJECT_BYTES * values.size)
-                for (v in values) t.rawsetInt(n++, v)
+                for (v in values) t.setPositional(n++, v)
             } else {
-                t.rawsetInt(n++, item.value.eval(f))
+                t.setPositional(n++, item.value.eval(f))
             }
         }
         return t
