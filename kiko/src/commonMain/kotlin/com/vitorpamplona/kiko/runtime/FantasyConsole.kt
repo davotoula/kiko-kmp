@@ -59,8 +59,10 @@ public interface ConsoleHost {
     /**
      * The bytes of another cartridge, for a game that spans several: `load(name)` switches to it
      * and `reload(…, name)` reads its data. [name] is what the cart wrote, `#id` for a cart on
-     * the original's site and a file name otherwise. Called on the console's thread, so it may
-     * block; null when the host cannot find it.
+     * the original's site and a file name otherwise, so it comes from a stranger: look it up, never
+     * build a URL or a path from it. Null when the host cannot find it. Called on the console's
+     * thread inside a frame, which [FantasyConsole.abort] can't interrupt here, so answer from
+     * memory and fetch a game's carts before it starts. Each name is asked for once.
      */
     public fun loadCart(name: String): ByteArray? = null
 
