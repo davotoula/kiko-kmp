@@ -256,6 +256,32 @@ class HostileCartTest {
     }
 
     @Test
+    fun keyedNilsBetweenPositionalItemsCostWhatTheConstructorSays() {
+        // Each `[k]=nil` empties the array the positional items before it built, so storing each
+        // positional item as it comes regrows that array every time: half a second a constructor.
+        val items = (1..32000).joinToString(",") { "\"a\",[$it]=nil" }
+        val started = TimeSource.Monotonic.markNow()
+        val console = runOnThread("for i=1,10 do local t={$items} end")
+        assertEquals(FantasyConsole.State.FINISHED, console.state)
+        assertTrue(started.elapsedNow() < 2.seconds, "took ${started.elapsedNow()}")
+    }
+
+    @Test
+    fun theKeyPastTheLastArrayIndexStaysItsOwnKey() {
+        // 32768 has no 16:16 number: its key is -32768's, which must not become array slot 32768.
+        val items = List(32767) { "1" }.joinToString(",")
+        val out = run("local t={[-32768]=\"x\",$items} printh(#t) printh(t[-32768])")
+        assertEquals(listOf("32767", "x"), out)
+    }
+
+    @Test
+    fun insertingIntoAFullArrayKeepsItsLength() {
+        val items = (1..32767).joinToString(",")
+        val out = run("local t={$items} add(t,0,1) printh(#t) printh(t[1]) printh(t[32767]) printh(t[-32768])")
+        assertEquals(listOf("32767", "0", "32766", "32767"), out)
+    }
+
+    @Test
     fun hugeSpritesAndMapsCostWhatTheyDraw() {
         val started = TimeSource.Monotonic.markNow()
         val out = run("sspr(0, 0, 8, 8, -16000, -16000, 32767, 32767) map(0, 0, -100000, -100000, 32767, 32767) printh('done')")

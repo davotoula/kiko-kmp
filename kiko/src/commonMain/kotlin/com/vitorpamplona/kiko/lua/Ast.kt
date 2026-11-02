@@ -321,28 +321,80 @@ internal class TableItem(
     val value: Expr,
 )
 
+/**
+ * A table constructor. Its keyed items are stored as they come; its positional items wait and go
+ * in [FLUSH] at a time, after the keyed items among them, as Lua 5.2 stores them, so
+ * `{"a", [1]="x"}` keeps `"a"`. The manual does not say which item wins. Storing each positional
+ * item at once would also let `{"a", [1]=nil, "a", [2]=nil, ...}` empty the array and regrow it on
+ * every pair: half a second for one constructor, with no abort check inside it.
+ */
 internal class TableExpr(
     val items: Array<TableItem>,
 ) : Expr() {
+    private val positional = items.count { it.key == null }
+
+    /** Both kinds of item: only then does the order positional items are stored in show. */
+    private val mixed = positional in 1 until items.size
+
     override suspend fun eval(f: Frame): Any? {
-        val positional = items.count { it.key == null }
         val t = LuaTable(positional)
+        if (mixed) return evalMixed(f, t)
         var n = 1
         for (i in items.indices) {
             val item = items[i]
             if (item.key != null) {
-                val k = item.key.eval(f) ?: throw LuaError("table index is nil")
-                t.rawset(k, item.value.eval(f))
+                t.rawset(item.key.eval(f) ?: throw LuaError("table index is nil"), item.value.eval(f))
             } else if (i == items.size - 1 && item.value.isMulti) {
-                val values = item.value.evalMulti(f)
-                // `{unpack(t)}`, `{...}`: as long as the cart likes, unlike the items written out.
-                f.interp.charge(Interpreter.OBJECT_BYTES * values.size)
-                for (v in values) t.setPositional(n++, v)
+                setMulti(f, t, n, item.value.evalMulti(f))
             } else {
                 t.setPositional(n++, item.value.eval(f))
             }
         }
         return t
+    }
+
+    private suspend fun evalMixed(
+        f: Frame,
+        t: LuaTable,
+    ): LuaTable {
+        val pending = arrayOfNulls<Any?>(minOf(positional, FLUSH))
+        var count = 0
+        var n = 1
+        for (i in items.indices) {
+            if (count == FLUSH) {
+                for (j in 0 until count) t.setPositional(n++, pending[j])
+                count = 0
+            }
+            val item = items[i]
+            if (item.key != null) {
+                t.rawset(item.key.eval(f) ?: throw LuaError("table index is nil"), item.value.eval(f))
+            } else if (i == items.size - 1 && item.value.isMulti) {
+                val values = item.value.evalMulti(f)
+                for (j in 0 until count) t.setPositional(n++, pending[j])
+                count = 0
+                setMulti(f, t, n, values)
+            } else {
+                pending[count++] = item.value.eval(f)
+            }
+        }
+        for (j in 0 until count) t.setPositional(n++, pending[j])
+        return t
+    }
+
+    private fun setMulti(
+        f: Frame,
+        t: LuaTable,
+        n: Int,
+        values: Values,
+    ) {
+        // `{unpack(t)}`, `{...}`: as long as the cart likes, unlike the items written out.
+        f.interp.charge(Interpreter.OBJECT_BYTES * values.size)
+        for (j in values.indices) t.setPositional(n + j, values[j])
+    }
+
+    private companion object {
+        /** Lua 5.2's `LFIELDS_PER_FLUSH`. */
+        const val FLUSH = 50
     }
 }
 

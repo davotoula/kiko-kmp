@@ -416,6 +416,26 @@ class LuaTest {
     }
 
     @Test
+    fun positionalItemsAreStoredAfterTheKeyedItemsAmongThem() {
+        val fortyNine = (1..49).joinToString(",")
+        val fifty = (1..50).joinToString(",")
+        val out =
+            run(
+                """
+                printh(({"a",[1]="x"})[1])
+                printh(({$fortyNine,[1]="x",50})[1])
+                printh(({$fifty,[1]="x",51})[1])
+                function two() return nil,"b" end
+                local t={"a",[2]="x",two()}
+                printh(#t.." "..tostr(t[2]))
+                local u={[1]="x",unpack({})}
+                printh(u[1])
+                """.trimIndent(),
+            )
+        assertEquals(listOf("a", "1", "x", "3 [nil]", "x"), out)
+    }
+
+    @Test
     fun aPositionalNilClearsTheKeyedItemItLandsOn() {
         val out =
             run(
