@@ -119,10 +119,13 @@ internal class LuaTable(
         while (arraySize > 0 && array[arraySize - 1] == null) arraySize--
     }
 
-    /** After the array grows, the keys that now continue it move out of the hash part. */
+    /**
+     * After the array grows, the keys that now continue it move out of the hash part, up to
+     * [MAX_INDEX]: the key after it is -32768's.
+     */
     private fun migrateFromHash() {
         val h = hash ?: return
-        while (h.isNotEmpty()) {
+        while (h.isNotEmpty() && arraySize < MAX_INDEX) {
             val next = Fix.fromInt(arraySize + 1)
             val v = h.remove(next) ?: return
             append(v)
@@ -143,6 +146,15 @@ internal class LuaTable(
         }
         if (index !in 1..arraySize) {
             rawsetInt(index, value)
+            return
+        }
+        if (arraySize == MAX_INDEX) {
+            // A full array: its last item moves up a key, as `t[#t+1] = t[#t]` moves it, to the
+            // key 16:16 spells -32768, and the length stays.
+            rawset(Fix.fromInt(MAX_INDEX + 1), array[MAX_INDEX - 1])
+            for (j in MAX_INDEX - 1 downTo index) array[j] = array[j - 1]
+            array[index - 1] = value
+            trimArray()
             return
         }
         append(null)
@@ -225,7 +237,10 @@ internal class LuaTable(
     override fun toString(): String = "table"
 
     companion object {
-        /** The last index a 16:16 key can hold: past it [Fix.fromInt] wraps to a negative number. */
+        /**
+         * The last index a 16:16 key can hold, and so the longest the array part gets: past it
+         * [Fix.fromInt] wraps to a negative number.
+         */
         private const val MAX_INDEX = 0x7fff
 
         private val EMPTY = arrayOfNulls<Any?>(0)
