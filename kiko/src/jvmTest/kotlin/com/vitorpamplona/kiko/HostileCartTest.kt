@@ -235,6 +235,15 @@ class HostileCartTest {
     }
 
     @Test
+    fun bigConstructorsCheckMemoryBeforeTheSampledCheck() {
+        // Written-out items cost no loop iterations: a thousand of these tables before the
+        // sampled check would be most of a gigabyte.
+        val items = List(40000) { "1" }.joinToString(",")
+        val i = iterationsBeforeOutOfMemory("t={} i=0 while true do i+=1 t[i]={$items} end")
+        assertTrue(i < 100, "stopped after $i tables")
+    }
+
+    @Test
     fun aLoopOfBigAllocationsStillEndsItsFrames() {
         // Each split builds 64K strings: a thousand of them before the sampled frame check would
         // hold one frame for seconds, long enough for a player's watchdog to call the game hung.

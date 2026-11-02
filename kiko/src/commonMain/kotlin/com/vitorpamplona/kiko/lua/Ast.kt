@@ -337,6 +337,9 @@ internal class TableExpr(
     private val mixed = positional in 1 until items.size
 
     override suspend fun eval(f: Frame): Any? {
+        // Items written out cost no loop iterations, so a loop of big constructors would build
+        // gigabytes before the sampled memory check; small ones stay off the allocation count.
+        if (items.size > UNCOUNTED_ITEMS) f.interp.charge(Interpreter.OBJECT_BYTES * items.size)
         val t = LuaTable(positional)
         if (mixed) return evalMixed(f, t)
         var n = 1
@@ -395,6 +398,9 @@ internal class TableExpr(
     private companion object {
         /** Lua 5.2's `LFIELDS_PER_FLUSH`. */
         const val FLUSH = 50
+
+        /** The most items a constructor builds without counting them towards the cart's memory. */
+        const val UNCOUNTED_ITEMS = 64
     }
 }
 
