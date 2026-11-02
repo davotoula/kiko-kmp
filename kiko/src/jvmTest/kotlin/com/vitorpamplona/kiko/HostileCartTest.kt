@@ -235,6 +235,13 @@ class HostileCartTest {
     }
 
     @Test
+    fun bigPeeksCheckMemoryBeforeTheSampledCheck() {
+        // Thrown away at once, so only the charge can stop this before the sampled check does.
+        val i = iterationsBeforeOutOfMemory("i=0 while true do i+=1 peek(0,32767) end")
+        assertTrue(i < 500, "$i big peeks before the memory check")
+    }
+
+    @Test
     fun bigConstructorsCheckMemoryBeforeTheSampledCheck() {
         // Written-out items cost no loop iterations: a thousand of these tables before the
         // sampled check would be most of a gigabyte.

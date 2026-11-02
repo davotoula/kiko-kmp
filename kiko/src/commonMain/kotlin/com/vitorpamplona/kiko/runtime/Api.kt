@@ -290,8 +290,11 @@ internal class Api(
         fn("peek") { args ->
             val addr = args.int(0)
             val n = args.int(1, 1)
-            // No cap beyond the 32767 a number can hold: carts read tables over 8192 bytes this way.
-            if (n <= 1) int(ram[addr]) else List(n) { Fix.fromInt(ram[addr + it]) }
+            if (n <= 1) return@fn int(ram[addr])
+            // The manual says 8192 at most, but a published game reads 10,019 bytes this way and
+            // can't start with fewer, so only the 32767 a number can hold limits this one.
+            interp.charge(Interpreter.OBJECT_BYTES * n)
+            List(n) { Fix.fromInt(ram[addr + it]) }
         }
         fn("peek2") { args ->
             val addr = args.int(0)
