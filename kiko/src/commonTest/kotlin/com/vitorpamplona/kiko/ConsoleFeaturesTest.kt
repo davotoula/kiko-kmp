@@ -237,6 +237,41 @@ class ConsoleFeaturesTest {
     }
 
     @Test
+    fun aGamesCartsShareTheirSaves() {
+        val out =
+            run(
+                "cartdata(\"game\") dset(0,7) load(\"#other\")",
+                frames = 3,
+                carts = other("cartdata(\"game\") printh(dget(0))"),
+            )
+        assertEquals(listOf("7"), out)
+    }
+
+    @Test
+    fun aMenuCallbackThatLoadsACartKeepsWhatItSaved() {
+        val t =
+            TestConsole(
+                """
+                cartdata("game")
+                menuitem(1, "next", function() dset(0,7) load("#other") end)
+                function _update() end
+                function _draw() end
+                """.trimIndent(),
+                other("function _draw() end"),
+            )
+        t.frames(1)
+        t.console.setButtons(0, 0x40) // pause
+        t.frames(1)
+        t.console.setButtons(0, 0)
+        t.console.setButtons(0, 0x08) // down to the menu item
+        t.frames(1)
+        t.console.setButtons(0, 0)
+        t.console.setButtons(0, 0x20) // X
+        t.frames(1)
+        assertEquals(7 shl 16, t.saved["game"]?.get(0))
+    }
+
+    @Test
     fun peekReadsMoreThan8192Bytes() {
         // Into Ruins reads its 10,019 byte table back this way; a shorter list loses the end of it.
         val out = run("poke(0x8000+10018,65) t={peek(0x8000,10019)} printh(#t..\",\"..t[10019])")

@@ -167,6 +167,8 @@ public class FantasyConsole(
     }
 
     private fun boot() {
+        // A menu callback can leave the cart in the middle of a frame, before step() saves.
+        flushCartData()
         // The manual doesn't say what `load` keeps. Community documentation has it overwrite only
         // the cart's own data, and multi-cart games rely on that: Into Ruins hands its next cart a
         // table in upper memory. Sources disagree on the screen, so it is cleared with the rest.
