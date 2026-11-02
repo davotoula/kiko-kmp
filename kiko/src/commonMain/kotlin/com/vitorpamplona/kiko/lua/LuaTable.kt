@@ -85,6 +85,31 @@ internal class LuaTable(
         }
     }
 
+    /**
+     * A positional item of a table being built: `{a, b}`, `{...}`, `pack(a, b)`. A nil with a value
+     * after it keeps its slot in the array part, so `#{nil, "b"}` is 2 and `unpack` gives back
+     * both: carts keep argument lists with nils in them that way. A nil with nothing after it
+     * takes no slot and clears any keyed item at that index: `#` may be any border of a table with
+     * holes, and the manual does not say which one a constructor gives. An item past [MAX_INDEX]
+     * has no key of its own, so it lands where [rawsetInt] puts it, outside the array part.
+     */
+    fun setPositional(
+        i: Int,
+        value: Any?,
+    ) {
+        if (i > MAX_INDEX) {
+            rawsetInt(i, value)
+            return
+        }
+        if (value == null && i > arraySize) {
+            hash?.remove(Fix.fromInt(i))
+            return
+        }
+        while (arraySize < i) append(hash?.remove(Fix.fromInt(arraySize + 1)))
+        array[i - 1] = value
+        if (value == null) trimArray() else migrateFromHash()
+    }
+
     private fun append(value: Any?) {
         if (arraySize == array.size) array = array.copyOf(maxOf(4, arraySize * 2))
         array[arraySize++] = value
@@ -200,6 +225,9 @@ internal class LuaTable(
     override fun toString(): String = "table"
 
     companion object {
+        /** The last index a 16:16 key can hold: past it [Fix.fromInt] wraps to a negative number. */
+        private const val MAX_INDEX = 0x7fff
+
         private val EMPTY = arrayOfNulls<Any?>(0)
     }
 }

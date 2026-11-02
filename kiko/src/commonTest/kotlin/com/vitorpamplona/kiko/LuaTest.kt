@@ -345,6 +345,110 @@ class LuaTest {
     }
 
     @Test
+    fun aConstructorKeepsTheSlotsOfItsNils() {
+        val out =
+            run(
+                """
+                printh(#{nil,"b","c"})
+                printh(#{"a",nil,"c"})
+                printh(#{nil,nil,false})
+                printh(#{"a",nil,nil})
+                printh(#{nil,nil})
+                """.trimIndent(),
+            )
+        assertEquals(listOf("3", "3", "3", "1", "0"), out)
+    }
+
+    @Test
+    fun aLeadingNilSurvivesUnpack() {
+        val out =
+            run(
+                """
+                function show(a,b,c) printh(tostr(a).." "..tostr(b).." "..tostr(c)) end
+                local t={nil,"b","c"}
+                show(unpack(t))
+                printh(select("#",unpack(t)))
+                """.trimIndent(),
+            )
+        assertEquals(listOf("[nil] b c", "3"), out)
+    }
+
+    @Test
+    fun varargsAndPackKeepTheSlotsOfTheirNils() {
+        val out =
+            run(
+                """
+                function count(...) local t={...} return #t end
+                printh(count(nil,"b"))
+                printh(#pack(nil,"b"))
+                printh(pack(nil,nil).n)
+                """.trimIndent(),
+            )
+        assertEquals(listOf("2", "2", "2"), out)
+    }
+
+    @Test
+    fun keyedItemsMixWithPositionalNils() {
+        val out =
+            run(
+                """
+                printh(#{nil,[2]="x"})
+                printh(#{"a",nil,[3]="z"})
+                printh(#{[3]="c",nil,"b"})
+                local t={[2]="x",nil,"y"}
+                printh(#t)
+                printh(t[2])
+                """.trimIndent(),
+            )
+        assertEquals(listOf("0", "1", "3", "2", "y"), out)
+    }
+
+    @Test
+    fun aPositionalItemReplacesAKeyedOne() {
+        val out =
+            run(
+                """
+                local t={[1]="x","a"}
+                for k,v in pairs(t) do printh(k.."="..v) end
+                """.trimIndent(),
+            )
+        assertEquals(listOf("1=a"), out)
+    }
+
+    @Test
+    fun aPositionalNilClearsTheKeyedItemItLandsOn() {
+        val out =
+            run(
+                """
+                local t={[1]="a",nil}
+                printh(#t)
+                printh(t[1])
+                local u={[2]="x",nil,nil}
+                printh(#u)
+                printh(u[2])
+                """.trimIndent(),
+            )
+        assertEquals(listOf("0", "[nil]", "0", "[nil]"), out)
+    }
+
+    @Test
+    fun anArrayWithAHoleStillWalksAndGrows() {
+        val out =
+            run(
+                """
+                local t={nil,"b"}
+                for k,v in pairs(t) do printh(k.."="..v) end
+                for v in all(t) do printh(v) end
+                add(t,"c")
+                printh(#t)
+                t[#t]=nil
+                printh(#t)
+                """.trimIndent(),
+            )
+        assertEquals(listOf("2=b", "b", "3", "2"), out)
+    }
+
+    @Test
     fun cartDataPersists() {
         val t = TestConsole("cartdata('test') dset(3, 42) printh(dget(3))").frames(1)
         assertEquals(listOf("42"), t.log)
