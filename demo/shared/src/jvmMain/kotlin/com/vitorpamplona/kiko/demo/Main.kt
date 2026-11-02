@@ -49,20 +49,19 @@ fun main(args: Array<String>) =
             title = "kiko demo",
             state = rememberWindowState(width = 600.dp, height = 760.dp),
         ) {
+            val openCart = { pickCart(window)?.let { cart = OpenedCart(it) } }
             MenuBar {
                 Menu("File") {
-                    Item("Open cart…", shortcut = KeyShortcut(Key.O, ctrl = true)) {
-                        pickCart(window)?.let { cart = OpenedCart(it) }
-                    }
+                    Item("Open cart…", shortcut = KeyShortcut(Key.O, ctrl = true)) { openCart() }
                     Separator()
                     Item("Quit", shortcut = KeyShortcut(Key.Q, ctrl = true), onClick = ::exitApplication)
                 }
             }
             DemoScreen(
                 opened = cart?.bytes,
-                onOpen = { pickCart(window)?.let { cart = OpenedCart(it) } },
+                onOpen = { openCart() },
                 onExit = ::exitApplication,
-                openedHost = cart?.others,
+                host = cart?.others,
             )
         }
     }

@@ -33,21 +33,28 @@ class FolderCarts(
     private val folder: File,
 ) : KikoPlayerHost {
     override fun loadCart(name: String): ByteArray? {
-        val base = name.removePrefix("#")
-        if ('/' in base || '\\' in base) return null
-        val exact = listOf(base, "$base.p8.png", "$base.p8").map { File(folder, it) }.firstOrNull { it.isFile }
-        return (exact ?: if (name.startsWith("#")) latestVersionOf(base) else null)?.readBytes()
+        val id = name.removePrefix("#")
+        if ('/' in id || '\\' in id) return null
+        val exact = listOf(id, "$id$PNG_CART", "$id.p8").map { File(folder, it) }.firstOrNull { it.isFile }
+        val file = exact ?: if (name.startsWith("#")) latestVersionOf(id) else null
+        return file?.takeIf { it.length() <= MAX_CART_BYTES }?.readBytes()
     }
 
-    private fun latestVersionOf(id: String): File? =
-        folder
-            .listFiles { file -> file.isFile }
-            .orEmpty()
-            .mapNotNull { file ->
-                file.name
-                    .removeSurrounding("$id-", ".p8.png")
-                    .toIntOrNull()
-                    ?.let { it to file }
-            }.maxByOrNull { (version, _) -> version }
-            ?.second
+    private fun latestVersionOf(id: String): File? {
+        val prefix = "$id-"
+        val versions =
+            folder
+                .list { _, name -> name.startsWith(prefix) && name.endsWith(PNG_CART) }
+                .orEmpty()
+                .mapNotNull { name -> name.removeSurrounding(prefix, PNG_CART).toIntOrNull()?.let { it to name } }
+        val latest = versions.maxByOrNull { (version, _) -> version } ?: return null
+        return File(folder, latest.second).takeIf { it.isFile }
+    }
+
+    private companion object {
+        const val PNG_CART = ".p8.png"
+
+        /** A cart PNG is tens of KiB; anything far past that is not one. */
+        const val MAX_CART_BYTES = 1L shl 20
+    }
 }
