@@ -482,7 +482,8 @@ internal class Api(
             one(s.substring(i - 1, j))
         }
         fn("split") { args ->
-            val s = tostr(args.getOrNull(0))
+            // The manual doesn't cover nil. Carts walk the result, so it must be empty, not "[nil]".
+            val s = args.getOrNull(0)?.let(::tostr) ?: return@fn one(LuaTable(0))
             val sep = args.getOrNull(1) ?: ","
             val convert = args.size < 3 || args.bool(2)
             // At most this many parts, each a string, a list slot and a table slot: charged before

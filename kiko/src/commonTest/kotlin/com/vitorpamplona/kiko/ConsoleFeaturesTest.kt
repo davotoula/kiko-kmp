@@ -270,6 +270,13 @@ class ConsoleFeaturesTest {
     }
 
     @Test
+    fun splittingNothingGivesNothingToWalk() {
+        // Into Ruins passes a missing attack pattern here on every plain attack.
+        val out = run("for n in all(split(nil,\"|\")) do printh(\"part \"..n) end printh(\"done\")")
+        assertEquals(listOf("done"), out)
+    }
+
+    @Test
     fun aMissingCartIsAClearError() {
         val out = run("load(\"#elsewhere\")")
         assertEquals(listOf("ERROR: this game continues in another cartridge (#elsewhere), which can't be loaded here"), out)
