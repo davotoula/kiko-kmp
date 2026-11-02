@@ -290,7 +290,8 @@ internal class Api(
         fn("peek") { args ->
             val addr = args.int(0)
             val n = args.int(1, 1)
-            if (n <= 1) int(ram[addr]) else List(minOf(n, 8192)) { Fix.fromInt(ram[addr + it]) }
+            // No cap beyond the 32767 a number can hold: carts read tables over 8192 bytes this way.
+            if (n <= 1) int(ram[addr]) else List(n) { Fix.fromInt(ram[addr + it]) }
         }
         fn("peek2") { args ->
             val addr = args.int(0)

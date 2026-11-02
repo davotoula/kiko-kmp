@@ -263,6 +263,13 @@ class ConsoleFeaturesTest {
     }
 
     @Test
+    fun peekReadsMoreThan8192Bytes() {
+        // Into Ruins reads its 10,019 byte table back this way; a shorter list loses the end of it.
+        val out = run("poke(0x8000+10018,65) t={peek(0x8000,10019)} printh(#t..\",\"..t[10019])")
+        assertEquals(listOf("10019,65"), out)
+    }
+
+    @Test
     fun aMissingCartIsAClearError() {
         val out = run("load(\"#elsewhere\")")
         assertEquals(listOf("ERROR: this game continues in another cartridge (#elsewhere), which can't be loaded here"), out)
